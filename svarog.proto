@@ -1,0 +1,58 @@
+syntax = "proto3";
+package svarog_messenger;
+option go_package = "/pb";
+
+service MpcSessionManager {
+    rpc NewSession(SessionConfig) returns (SessionConfig);
+    rpc GetSessionConfig(SessionId) returns (SessionConfig);
+    rpc Inbox(VecMessage) returns (Void);
+    rpc Outbox(VecMessage) returns (VecMessage);
+    rpc Ping(Void) returns (PingResponse);
+}
+
+message SessionConfig {
+    Algorithm algorithm = 1;
+    string session_id = 2;
+    uint64 threshold = 3;
+
+    // keygen 时的 values 全设为 true, 意思是必须都参加.
+    // sign 时签名人 values 设为 true, 意思是签名人必须参加.
+    map<string, bool> players = 4;
+
+    // 保留字段, 提交时填0.
+    int64 expire_at_unix_epoch = 5;
+}
+
+enum Curve {
+    SECP256k1 = 0;
+    Ed25519 = 1;
+}
+
+enum Scheme {
+    ECDSA = 0;
+    Schnorr = 1;
+}
+
+message Algorithm {
+    Curve curve = 1;
+    Scheme scheme = 2;
+}
+
+message SessionId {
+    string value = 1;
+}
+
+message Message {
+    string key = 1;
+    optional bytes obj = 2;
+}
+
+message VecMessage {
+    repeated Message values = 1;
+}
+
+message PingResponse {
+    string value =  1;
+}
+
+message Void {}
