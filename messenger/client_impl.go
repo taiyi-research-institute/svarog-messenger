@@ -141,6 +141,58 @@ func (cl *MessengerClient) Exchange(ddl_unixepoch int64) error {
 	return nil
 }
 
+func (cl *MessengerClient) TwoPartySend(obj any, sid string, seq int) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+	stub := cl.stub()
+
+	key := PrimaryKey(sid, "two party", 0, 0, seq)
+	buf0 := new(bytes.Buffer)
+	err := gob.NewEncoder(buf0).Encode(obj)
+	if err != nil {
+		err = fmt.Errorf("« TwoPartySend » failed to serialize object: sid = %s, seq = %s", sid, seq)
+		return err
+	}
+	req0 := &pb.Message{Key: key, Obj: buf0.Bytes()}
+	req := &pb.VecMessage{Values: []*pb.Message{req0}}
+
+	if _, err = stub.Inbox(ctx, req); err != nil {
+		err = fmt.Errorf("« TwoPartySend » failed to post object: sid = %s, seq = %d", sid, seq)
+		return err
+	}
+	return nil
+}
+
+func (cl *MessengerClient) TwoPartyRecv(out any, sid string, seq int) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+	stub := cl.stub()
+
+	key := PrimaryKey(sid, "two party", 0, 0, seq)
+	req0 := &pb.Message{Key: key, Obj: nil}
+	req := &pb.VecMessage{Values: []*pb.Message{req0}}
+
+	resp0, err := stub.Outbox(ctx, req)
+	if err != nil {
+		err = fmt.Errorf("« TwoPartyRecv » failed to post object: sid = %s, seq = %d", sid, seq)
+		return err
+	}
+	if len(resp0.Values) != 1 {
+		err = fmt.Errorf("« TwoPartyRecv » received bad response: sid = %s, seq = %d", sid, seq)
+		return err
+	}
+	resp := resp0.Values[0].Obj
+
+	buf := bytes.NewBuffer(resp)
+	err = gob.NewDecoder(buf).Decode(out)
+	if err != nil {
+		err = fmt.Errorf("« TwoPartyRecv » failed to deserialize object: sid = %s, seq = %d", sid, seq)
+		return err
+	}
+
+	return nil
+}
+
 func (cl *MessengerClient) MpcClear() {
 	cl.tx = make([]*pb.Message, 0)
 	cl.rx = make(map[string]any)
