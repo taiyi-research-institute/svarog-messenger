@@ -23,6 +23,8 @@ type MessengerClient struct {
 	tx   []*pb.Message
 	rx   map[string]any
 	conn *grpc.ClientConn
+
+	SessionId string
 }
 
 func (cl *MessengerClient) Connect(manager_hostport string) (*MessengerClient, error) {
@@ -63,6 +65,7 @@ func (cl *MessengerClient) GrpcNewSession(
 	if err != nil {
 		return nil, err
 	}
+	cl.SessionId = cfg_resp.SessionId
 	return cfg_resp, nil
 }
 
@@ -78,6 +81,7 @@ func (cl *MessengerClient) GrpcGetSessionConfig(
 	if err != nil {
 		return nil, err
 	}
+	cl.SessionId = cfg.SessionId
 	return cfg, nil
 }
 
