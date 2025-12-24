@@ -69,6 +69,20 @@ func (cl *MessengerClient) GrpcNewSession(
 	return cfg_resp, nil
 }
 
+func (cl *MessengerClient) GrpcNewSessionEasy() (string, error) {
+	// ceremony
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+	stub := cl.stub()
+
+	resp, err := stub.NewSession(ctx, &pb.SessionConfig{})
+	if err != nil {
+		return "", err
+	}
+	cl.SessionId = resp.SessionId
+	return resp.SessionId, nil
+}
+
 func (cl *MessengerClient) GrpcGetSessionConfig(
 	session_id string,
 ) (*pb.SessionConfig, error) {
