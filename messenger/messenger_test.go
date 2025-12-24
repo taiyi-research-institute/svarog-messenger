@@ -14,15 +14,14 @@ import (
 )
 
 func TestSessionConfig(t *testing.T) {
-	hp := "127.0.0.1:65534"
 	go func() {
-		mr.SpawnServer(hp)
+		mr.SpawnServer("127.0.0.1", 65534)
 	}()
 	time.Sleep(time.Second * 1)
 
-	cl, err := new(mr.MessengerClient).Connect(hp)
+	cl, err := new(mr.MessengerClient).Connect("127.0.0.1", 65534)
 	if err != nil {
-		t.Fatalf("Cannot connect to %v, reason: %v", hp, err)
+		t.Fatalf("Cannot connect to %s:%d, reason: %v", "127.0.0.1", 65534, err)
 	}
 	defer cl.Close()
 
@@ -65,15 +64,14 @@ func TestGobFromBytes(t *testing.T) {
 }
 
 func TestInboxOutbox(t *testing.T) {
-	hp := "127.0.0.1:65534"
 	go func() {
-		mr.SpawnServer(hp)
+		mr.SpawnServer("127.0.0.1", 65534)
 	}()
 	time.Sleep(time.Second * 1)
 
-	cl, err := new(mr.MessengerClient).Connect(hp)
+	cl, err := new(mr.MessengerClient).Connect("127.0.0.1", 65534)
 	if err != nil {
-		t.Fatalf("Cannot connect to %v, reason: %v", hp, err)
+		t.Fatalf("Cannot connect to %s:%d, reason: %v", "127.0.0.1", 65534, err)
 	}
 	defer cl.Close()
 

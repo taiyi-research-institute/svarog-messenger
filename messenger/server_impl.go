@@ -20,10 +20,11 @@ import (
 
 const SESSION_TIMEOUT = time.Second * 60
 
-func SpawnServer(hostport string) {
-	sock, err := net.Listen("tcp", hostport)
+func SpawnServer(host string, port uint16) {
+	hp := fmt.Sprintf("%s:%d", host, port)
+	sock, err := net.Listen("tcp", hp)
 	if err != nil {
-		log.Println("failed to listen to", hostport)
+		log.Println("failed to listen to", hp)
 		panic(err)
 	}
 

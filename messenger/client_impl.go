@@ -27,9 +27,9 @@ type MessengerClient struct {
 	SessionId string
 }
 
-func (cl *MessengerClient) Connect(manager_hostport string) (*MessengerClient, error) {
+func (cl *MessengerClient) Connect(host string, port uint16) (*MessengerClient, error) {
 	conn, err := grpc.NewClient(
-		manager_hostport,
+		fmt.Sprintf("%s:%d", host, port),
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 	)
 	if err != nil {
@@ -168,7 +168,7 @@ func (cl *MessengerClient) TwoPartySend(obj any, sid string, seq int) error {
 	buf0 := new(bytes.Buffer)
 	err := gob.NewEncoder(buf0).Encode(obj)
 	if err != nil {
-		err = fmt.Errorf("« TwoPartySend » failed to serialize object: sid = %s, seq = %s", sid, seq)
+		err = fmt.Errorf("« TwoPartySend » failed to serialize object: sid = %s, seq = %d", sid, seq)
 		return err
 	}
 	req0 := &pb.Message{Key: key, Obj: buf0.Bytes()}
