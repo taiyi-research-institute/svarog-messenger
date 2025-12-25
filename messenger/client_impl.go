@@ -8,11 +8,11 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/cockroachdb/errors"
+	"github.com/taiyi-research-institute/svarog-messenger/pb"
 	"golang.org/x/crypto/blake2b"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
-
-	"github.com/taiyi-research-institute/svarog-messenger/pb"
 )
 
 const (
@@ -142,7 +142,7 @@ func (cl *MessengerClient) Exchange(ddl_unixepoch int64) error {
 	for _, msg := range resp.Values {
 		ptr, ok := cl.rx[msg.Key]
 		if !ok {
-			err = fmt.Errorf("received a message with primary key %v which is not registered", msg.Key)
+			err = errors.Newf("received a message with primary key %v which is not registered", msg.Key)
 			return err
 		}
 
@@ -150,7 +150,7 @@ func (cl *MessengerClient) Exchange(ddl_unixepoch int64) error {
 		err := gob.NewDecoder(buf).Decode(ptr)
 
 		if err != nil {
-			err = fmt.Errorf("MpcExchange cannot unmarshal msg.obj (2): %w", err)
+			err = errors.Wrapf(err, "MpcExchange failed to deserialize msg.obj")
 			return err
 		}
 	}
@@ -168,14 +168,14 @@ func (cl *MessengerClient) TwoPartySend(obj any, sid string, seq int) error {
 	buf0 := new(bytes.Buffer)
 	err := gob.NewEncoder(buf0).Encode(obj)
 	if err != nil {
-		err = fmt.Errorf("« TwoPartySend » failed to serialize object: sid = %s, seq = %d", sid, seq)
+		err = errors.Wrapf(err, "« TwoPartySend » failed to serialize object: sid = %s, seq = %d", sid, seq)
 		return err
 	}
 	req0 := &pb.Message{Key: key, Obj: buf0.Bytes()}
 	req := &pb.VecMessage{Values: []*pb.Message{req0}}
 
 	if _, err = stub.Inbox(ctx, req); err != nil {
-		err = fmt.Errorf("« TwoPartySend » failed to post object: sid = %s, seq = %d", sid, seq)
+		err = errors.Wrapf(err, "« TwoPartySend » failed to post object: sid = %s, seq = %d", sid, seq)
 		return err
 	}
 	return nil
@@ -192,11 +192,11 @@ func (cl *MessengerClient) TwoPartyRecv(out any, sid string, seq int) error {
 
 	resp0, err := stub.Outbox(ctx, req)
 	if err != nil {
-		err = fmt.Errorf("« TwoPartyRecv » failed to post object: sid = %s, seq = %d", sid, seq)
+		err = errors.Wrapf(err, "« TwoPartyRecv » failed to post object: sid = %s, seq = %d", sid, seq)
 		return err
 	}
 	if len(resp0.Values) != 1 {
-		err = fmt.Errorf("« TwoPartyRecv » received bad response: sid = %s, seq = %d", sid, seq)
+		err = errors.Wrapf(err, "« TwoPartyRecv » received bad response: sid = %s, seq = %d", sid, seq)
 		return err
 	}
 	resp := resp0.Values[0].Obj
@@ -204,7 +204,7 @@ func (cl *MessengerClient) TwoPartyRecv(out any, sid string, seq int) error {
 	buf := bytes.NewBuffer(resp)
 	err = gob.NewDecoder(buf).Decode(out)
 	if err != nil {
-		err = fmt.Errorf("« TwoPartyRecv » failed to deserialize object: sid = %s, seq = %d", sid, seq)
+		err = errors.Wrapf(err, "« TwoPartyRecv » failed to deserialize object: sid = %s, seq = %d", sid, seq)
 		return err
 	}
 
