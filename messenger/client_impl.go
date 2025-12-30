@@ -116,8 +116,17 @@ func (cl *MessengerClient) RegisterRecv(out any, sid string, topic string, src i
 	return cl
 }
 
-func (cl *MessengerClient) Exchange(ddl_unixepoch int64) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+func (cl *MessengerClient) Exchange(snd_secs uint, rcv_secs uint) error {
+	if snd_secs == 0 {
+		snd_secs = 60
+	}
+	if rcv_secs == 0 {
+		rcv_secs = 60
+	}
+	ctx, cancel := context.WithTimeout(
+		context.Background(),
+		time.Duration(snd_secs)*time.Second,
+	)
 	defer cancel()
 	stub := cl.stub()
 
@@ -126,8 +135,11 @@ func (cl *MessengerClient) Exchange(ddl_unixepoch int64) error {
 		return err
 	}
 
-	ctx, cancel = context.WithDeadline(context.Background(), time.Unix(ddl_unixepoch, 0))
-	defer cancel()
+	ctx, cancel2 := context.WithTimeout(
+		context.Background(),
+		time.Duration(rcv_secs)*time.Second,
+	)
+	defer cancel2()
 
 	req := &pb.VecMessage{Values: make([]*pb.Message, 0)}
 	for k := range cl.rx {
@@ -159,44 +171,64 @@ func (cl *MessengerClient) Exchange(ddl_unixepoch int64) error {
 	return nil
 }
 
-func (cl *MessengerClient) TwoPartySend(obj any, sid string, seq int) error {
+func (cl *MessengerClient) DirectSend(
+	obj any,
+	sid string,
+	topic string,
+	src int,
+	dst int,
+	seq int,
+) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 	stub := cl.stub()
 
-	key := PrimaryKey(sid, "two party", 0, 0, seq)
+	key := PrimaryKey(sid, topic, src, dst, seq)
 	buf0 := new(bytes.Buffer)
 	err := gob.NewEncoder(buf0).Encode(obj)
 	if err != nil {
-		err = errors.Wrapf(err, "« TwoPartySend » failed to serialize object: sid = %s, seq = %d", sid, seq)
+		err = errors.Wrapf(err, "« DirectSend » failed to serialize object: "+
+			"query = (%s, %s, %d, %d, %d)", sid, topic, src, dst, seq)
 		return err
 	}
 	req0 := &pb.Message{Key: key, Obj: buf0.Bytes()}
 	req := &pb.VecMessage{Values: []*pb.Message{req0}}
 
 	if _, err = stub.Inbox(ctx, req); err != nil {
-		err = errors.Wrapf(err, "« TwoPartySend » failed to post object: sid = %s, seq = %d", sid, seq)
+		err = errors.Wrapf(err, "« DirectSend » failed to post object: "+
+			"query = (%s, %s, %d, %d, %d)", sid, topic, src, dst, seq)
 		return err
 	}
+
+	fmt.Printf("finish DirectSend %s, %s, %d, %d, %d, size: %d bytes.\r\n", sid, topic, src, dst, seq, len(req0.Obj))
 	return nil
 }
 
-func (cl *MessengerClient) TwoPartyRecv(out any, sid string, seq int) error {
+func (cl *MessengerClient) DirectRecv(
+	out any,
+	sid string,
+	topic string,
+	src int,
+	dst int,
+	seq int,
+) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 	stub := cl.stub()
 
-	key := PrimaryKey(sid, "two party", 0, 0, seq)
+	key := PrimaryKey(sid, topic, src, dst, seq)
 	req0 := &pb.Message{Key: key, Obj: nil}
 	req := &pb.VecMessage{Values: []*pb.Message{req0}}
 
 	resp0, err := stub.Outbox(ctx, req)
 	if err != nil {
-		err = errors.Wrapf(err, "« TwoPartyRecv » failed to post object: sid = %s, seq = %d", sid, seq)
+		err = errors.Wrapf(err, "« DirectRecv » failed to post object: "+
+			"query = (%s, %s, %d, %d, %d)", sid, topic, src, dst, seq)
 		return err
 	}
 	if len(resp0.Values) != 1 {
-		err = errors.Wrapf(err, "« TwoPartyRecv » received bad response: sid = %s, seq = %d", sid, seq)
+		err = errors.Wrapf(err, "« DirectRecv » received bad response: "+
+			"query = (%s, %s, %d, %d, %d)", sid, topic, src, dst, seq)
 		return err
 	}
 	resp := resp0.Values[0].Obj
@@ -204,9 +236,11 @@ func (cl *MessengerClient) TwoPartyRecv(out any, sid string, seq int) error {
 	buf := bytes.NewBuffer(resp)
 	err = gob.NewDecoder(buf).Decode(out)
 	if err != nil {
-		err = errors.Wrapf(err, "« TwoPartyRecv » failed to deserialize object: sid = %s, seq = %d", sid, seq)
+		err = errors.Wrapf(err, "« DirectRecv » failed to deserialize object: "+
+			"query = (%s, %s, %d, %d, %d)", sid, topic, src, dst, seq)
 		return err
 	}
+	fmt.Printf("finish DirectRecv %s, %s, %d, %d, %d, size: %d bytes.\r\n", sid, topic, src, dst, seq, len(resp))
 
 	return nil
 }
