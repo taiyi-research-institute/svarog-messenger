@@ -19,6 +19,12 @@ const (
 	BCAST_ID = 0
 )
 
+var (
+	options = []grpc.CallOption{
+		grpc.MaxCallRecvMsgSize(1048576 * 32),
+	}
+)
+
 type MessengerClient struct {
 	tx   []*pb.Message
 	rx   map[string]any
@@ -31,6 +37,9 @@ func (cl *MessengerClient) Connect(host string, port uint16) (*MessengerClient, 
 	conn, err := grpc.NewClient(
 		fmt.Sprintf("%s:%d", host, port),
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithDefaultCallOptions(
+			grpc.MaxCallRecvMsgSize(1048576*32),
+		),
 	)
 	if err != nil {
 		return nil, err
@@ -195,6 +204,7 @@ func (cl *MessengerClient) DirectSend(
 	req := &pb.VecMessage{Values: []*pb.Message{req0}}
 
 	if _, err = stub.Inbox(ctx, req); err != nil {
+		fmt.Println("« DirectSend » with new options")
 		err = errors.Wrapf(err, "« DirectSend » failed to post object: "+
 			"query = (%s, %s, %d, %d, %d)", sid, topic, src, dst, seq)
 		return err

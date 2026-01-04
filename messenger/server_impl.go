@@ -28,7 +28,9 @@ func SpawnServer(host string, port uint16) {
 		panic(err)
 	}
 
-	grpc_server := grpc.NewServer()
+	grpc_server := grpc.NewServer(
+		grpc.MaxRecvMsgSize(1048576 * 32),
+	)
 	// See `func main()` of the following link to learn how to configure HTTPS.
 	// https://github.com/grpc/grpc-go/blob/master/examples/route_guide/server/server.go
 

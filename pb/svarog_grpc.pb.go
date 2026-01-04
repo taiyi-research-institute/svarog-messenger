@@ -22,8 +22,6 @@ type MpcSessionManagerClient interface {
 	Inbox(ctx context.Context, in *VecMessage, opts ...grpc.CallOption) (*Void, error)
 	Outbox(ctx context.Context, in *VecMessage, opts ...grpc.CallOption) (*VecMessage, error)
 	Ping(ctx context.Context, in *Void, opts ...grpc.CallOption) (*PingResponse, error)
-	ChannelPush(ctx context.Context, in *Message, opts ...grpc.CallOption) (*Void, error)
-	ChannelPull(ctx context.Context, in *Message, opts ...grpc.CallOption) (*Message, error)
 }
 
 type mpcSessionManagerClient struct {
@@ -79,24 +77,6 @@ func (c *mpcSessionManagerClient) Ping(ctx context.Context, in *Void, opts ...gr
 	return out, nil
 }
 
-func (c *mpcSessionManagerClient) ChannelPush(ctx context.Context, in *Message, opts ...grpc.CallOption) (*Void, error) {
-	out := new(Void)
-	err := c.cc.Invoke(ctx, "/svarog_messenger.MpcSessionManager/ChannelPush", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *mpcSessionManagerClient) ChannelPull(ctx context.Context, in *Message, opts ...grpc.CallOption) (*Message, error) {
-	out := new(Message)
-	err := c.cc.Invoke(ctx, "/svarog_messenger.MpcSessionManager/ChannelPull", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 // MpcSessionManagerServer is the server API for MpcSessionManager service.
 // All implementations must embed UnimplementedMpcSessionManagerServer
 // for forward compatibility
@@ -106,8 +86,6 @@ type MpcSessionManagerServer interface {
 	Inbox(context.Context, *VecMessage) (*Void, error)
 	Outbox(context.Context, *VecMessage) (*VecMessage, error)
 	Ping(context.Context, *Void) (*PingResponse, error)
-	ChannelPush(context.Context, *Message) (*Void, error)
-	ChannelPull(context.Context, *Message) (*Message, error)
 	mustEmbedUnimplementedMpcSessionManagerServer()
 }
 
@@ -129,12 +107,6 @@ func (UnimplementedMpcSessionManagerServer) Outbox(context.Context, *VecMessage)
 }
 func (UnimplementedMpcSessionManagerServer) Ping(context.Context, *Void) (*PingResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Ping not implemented")
-}
-func (UnimplementedMpcSessionManagerServer) ChannelPush(context.Context, *Message) (*Void, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ChannelPush not implemented")
-}
-func (UnimplementedMpcSessionManagerServer) ChannelPull(context.Context, *Message) (*Message, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ChannelPull not implemented")
 }
 func (UnimplementedMpcSessionManagerServer) mustEmbedUnimplementedMpcSessionManagerServer() {}
 
@@ -239,42 +211,6 @@ func _MpcSessionManager_Ping_Handler(srv interface{}, ctx context.Context, dec f
 	return interceptor(ctx, in, info, handler)
 }
 
-func _MpcSessionManager_ChannelPush_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(Message)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(MpcSessionManagerServer).ChannelPush(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/svarog_messenger.MpcSessionManager/ChannelPush",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MpcSessionManagerServer).ChannelPush(ctx, req.(*Message))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _MpcSessionManager_ChannelPull_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(Message)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(MpcSessionManagerServer).ChannelPull(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/svarog_messenger.MpcSessionManager/ChannelPull",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MpcSessionManagerServer).ChannelPull(ctx, req.(*Message))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 var _MpcSessionManager_serviceDesc = grpc.ServiceDesc{
 	ServiceName: "svarog_messenger.MpcSessionManager",
 	HandlerType: (*MpcSessionManagerServer)(nil),
@@ -298,14 +234,6 @@ var _MpcSessionManager_serviceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Ping",
 			Handler:    _MpcSessionManager_Ping_Handler,
-		},
-		{
-			MethodName: "ChannelPush",
-			Handler:    _MpcSessionManager_ChannelPush_Handler,
-		},
-		{
-			MethodName: "ChannelPull",
-			Handler:    _MpcSessionManager_ChannelPull_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
